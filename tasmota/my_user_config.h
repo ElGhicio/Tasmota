@@ -362,7 +362,7 @@
 //#define MY_LANGUAGE            fy_NL           // Frysk in Nederland
 //#define MY_LANGUAGE            he_HE           // Hebrew in Israel
 //#define MY_LANGUAGE            hu_HU           // Hungarian in Hungary
-//#define MY_LANGUAGE            it_IT           // Italian in Italy
+#define MY_LANGUAGE            it_IT           // Italian in Italy
 //#define MY_LANGUAGE            ko_KO           // Korean in Korea
 //#define MY_LANGUAGE            nl_NL           // Dutch in the Nederland
 //#define MY_LANGUAGE            pl_PL           // Polish in Poland
@@ -432,6 +432,8 @@
 // -- HTTP ----------------------------------------
 #define USE_WEBSERVER                            // Enable web server and Wifi Manager (+66k code, +8k mem)
   #define WEB_PORT             80                // Web server Port for User and Admin mode
+  #define WEB_PORT_SSL        443                // Web server Port ssl
+
   #define WEB_USERNAME         "admin"           // Web server Admin mode user name
 //  #define USE_JAVASCRIPT_ES6                     // Enable ECMAScript6 syntax using less JavaScript code bytes (fails on IE11)
   #define USE_ENHANCED_GUI_WIFI_SCAN             // Enable wifi scan output with BSSID (+0k5 code)
