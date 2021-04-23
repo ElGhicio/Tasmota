@@ -693,8 +693,11 @@ struct {
   uint8_t       shd_leading_edge;          // F5B
   uint16_t      shd_warmup_brightness;     // F5C
   uint8_t       shd_warmup_time;           // F5E
+  //MP
+  uint16_t      web_portssl;               // F5F 3935
+  uint8_t       flag_https;                // F61 3937
 
-  uint8_t       free_f5f[69];              // F5F - Decrement if adding new Setting variables just above and below
+  uint8_t       free_f5f[66];              // F61 - Decrement if adding new Setting variables just above and below
 
   // Only 32 bit boundary variables below
 

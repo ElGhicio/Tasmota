@@ -34,6 +34,10 @@
 #define WIFI_SOFT_AP_CHANNEL                      1      // Soft Access Point Channel number between 1 and 11 as used by WifiManager web GUI
 #endif
 
+#define XDRV_01                               1
+#define WEB_HTTP                              0
+#define WEB_HTTPS                             1
+
 #ifndef MAX_WIFI_NETWORKS_TO_SHOW
 #define MAX_WIFI_NETWORKS_TO_SHOW                 3      // Maximum number of Wifi Networks to show in the Wifi Configuration Menu BEFORE clicking on Show More Networks.
 #endif
@@ -60,6 +64,9 @@ const uint16_t HTTP_OTA_RESTART_RECONNECT_TIME = 10000;  // milliseconds - Allow
 
 #include <ESP8266WebServer.h>
 #include <DNSServer.h>
+
+//MP
+#include <ESP8266WebServerSecure.h>
 
 enum UploadTypes { UPL_TASMOTA, UPL_SETTINGS, UPL_EFM8BB1, UPL_TASMOTACLIENT, UPL_EFR32, UPL_SHD, UPL_CCL, UPL_UFSFILE };
 
@@ -394,6 +401,8 @@ enum WifiTestOptions {WIFI_NOT_TESTING, WIFI_TESTING, WIFI_TEST_FINISHED_SUCCESS
 DNSServer *DnsServer;
 ESP8266WebServer *Webserver;
 
+BearSSL::ESP8266WebServerSecure *WebserverSSL=NULL;
+
 struct WEB {
   String chunk_buffer = "";                         // Could be max 2 * CHUNKED_BUFFER_SIZE
   uint16_t upload_error = 0;
@@ -411,11 +420,88 @@ struct WEB {
   uint8_t old_wificonfig = WIFI_MANAGER;
 } Web;
 
+//MP
+// The certificate is stored in PMEM
+static const uint8_t x509[] PROGMEM = {
+  0x30, 0x82, 0x01, 0x91, 0x30, 0x82, 0x01, 0x3b, 0x02, 0x14, 0x04, 0x3d,
+  0x63, 0x0a, 0x0e, 0xf8, 0xbc, 0x0e, 0x37, 0xa3, 0x8b, 0xce, 0xa0, 0x2a,
+  0xb9, 0x7f, 0x62, 0x43, 0x8e, 0x0b, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86,
+  0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b, 0x05, 0x00, 0x30, 0x4a, 0x31,
+  0x12, 0x30, 0x10, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x09, 0x45, 0x6c,
+  0x20, 0x47, 0x68, 0x69, 0x63, 0x69, 0x6f, 0x31, 0x16, 0x30, 0x14, 0x06,
+  0x03, 0x55, 0x04, 0x03, 0x0c, 0x0d, 0x31, 0x39, 0x32, 0x2e, 0x31, 0x36,
+  0x38, 0x2e, 0x31, 0x2e, 0x31, 0x33, 0x35, 0x31, 0x0b, 0x30, 0x09, 0x06,
+  0x03, 0x55, 0x04, 0x06, 0x13, 0x02, 0x49, 0x54, 0x31, 0x0f, 0x30, 0x0d,
+  0x06, 0x03, 0x55, 0x04, 0x08, 0x0c, 0x06, 0x4e, 0x61, 0x70, 0x6f, 0x6c,
+  0x69, 0x30, 0x1e, 0x17, 0x0d, 0x32, 0x31, 0x30, 0x34, 0x31, 0x37, 0x31,
+  0x37, 0x34, 0x38, 0x34, 0x35, 0x5a, 0x17, 0x0d, 0x33, 0x34, 0x31, 0x32,
+  0x32, 0x35, 0x31, 0x37, 0x34, 0x38, 0x34, 0x35, 0x5a, 0x30, 0x4a, 0x31,
+  0x12, 0x30, 0x10, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x09, 0x45, 0x6c,
+  0x20, 0x47, 0x68, 0x69, 0x63, 0x69, 0x6f, 0x31, 0x16, 0x30, 0x14, 0x06,
+  0x03, 0x55, 0x04, 0x03, 0x0c, 0x0d, 0x31, 0x39, 0x32, 0x2e, 0x31, 0x36,
+  0x38, 0x2e, 0x31, 0x2e, 0x31, 0x33, 0x35, 0x31, 0x0b, 0x30, 0x09, 0x06,
+  0x03, 0x55, 0x04, 0x06, 0x13, 0x02, 0x49, 0x54, 0x31, 0x0f, 0x30, 0x0d,
+  0x06, 0x03, 0x55, 0x04, 0x08, 0x0c, 0x06, 0x4e, 0x61, 0x70, 0x6f, 0x6c,
+  0x69, 0x30, 0x5c, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+  0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x4b, 0x00, 0x30, 0x48, 0x02,
+  0x41, 0x00, 0xdf, 0xd5, 0xe4, 0xb2, 0x50, 0x00, 0xb0, 0x4b, 0xc6, 0xc8,
+  0xa6, 0xf4, 0x16, 0xb6, 0xd8, 0xd2, 0xa5, 0x91, 0x97, 0x2e, 0x37, 0x65,
+  0x7a, 0x12, 0x15, 0x68, 0x23, 0xa4, 0xc9, 0x09, 0xf3, 0x14, 0xc4, 0xbe,
+  0xae, 0x97, 0x78, 0xde, 0x01, 0x08, 0x21, 0xb2, 0x31, 0xf8, 0x3b, 0x3f,
+  0x0c, 0xa0, 0xf3, 0x27, 0x91, 0x05, 0x7c, 0x98, 0x27, 0x6f, 0xf0, 0x74,
+  0xc4, 0x4a, 0x71, 0x96, 0xd7, 0x1d, 0x02, 0x03, 0x01, 0x00, 0x01, 0x30,
+  0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b,
+  0x05, 0x00, 0x03, 0x41, 0x00, 0xb6, 0xcc, 0x89, 0x2f, 0xff, 0xff, 0xcf,
+  0x23, 0x60, 0x4c, 0x57, 0xbd, 0x02, 0xd8, 0xca, 0xed, 0x59, 0xea, 0x9f,
+  0xf2, 0xae, 0x61, 0x34, 0xc5, 0xdf, 0x79, 0x0b, 0xff, 0x7b, 0xe7, 0x5f,
+  0x3a, 0x29, 0x0f, 0x04, 0xcc, 0x1b, 0x81, 0x0b, 0xc2, 0x1b, 0xf1, 0x7c,
+  0x2b, 0x57, 0xc9, 0xfe, 0x3e, 0x18, 0x48, 0xa3, 0x6d, 0x34, 0x75, 0xef,
+  0x8f, 0x79, 0x7a, 0x34, 0x44, 0x32, 0x1b, 0xef, 0x2b
+};
+
+// And so is the key.  These could also be in DRAM
+static const uint8_t rsakey[] PROGMEM = {
+  0x30, 0x82, 0x01, 0x3a, 0x02, 0x01, 0x00, 0x02, 0x41, 0x00, 0xdf, 0xd5,
+  0xe4, 0xb2, 0x50, 0x00, 0xb0, 0x4b, 0xc6, 0xc8, 0xa6, 0xf4, 0x16, 0xb6,
+  0xd8, 0xd2, 0xa5, 0x91, 0x97, 0x2e, 0x37, 0x65, 0x7a, 0x12, 0x15, 0x68,
+  0x23, 0xa4, 0xc9, 0x09, 0xf3, 0x14, 0xc4, 0xbe, 0xae, 0x97, 0x78, 0xde,
+  0x01, 0x08, 0x21, 0xb2, 0x31, 0xf8, 0x3b, 0x3f, 0x0c, 0xa0, 0xf3, 0x27,
+  0x91, 0x05, 0x7c, 0x98, 0x27, 0x6f, 0xf0, 0x74, 0xc4, 0x4a, 0x71, 0x96,
+  0xd7, 0x1d, 0x02, 0x03, 0x01, 0x00, 0x01, 0x02, 0x40, 0x3e, 0xde, 0xed,
+  0x65, 0xc8, 0x62, 0xe9, 0x21, 0xdf, 0xab, 0xec, 0x79, 0x13, 0x08, 0x38,
+  0xce, 0xb2, 0x02, 0xba, 0xdc, 0x18, 0x63, 0x40, 0x6e, 0x63, 0xe4, 0xe4,
+  0x5e, 0x1c, 0xb9, 0xd6, 0xb4, 0xb0, 0x0a, 0x5f, 0x9f, 0x0b, 0x1c, 0x0d,
+  0x1d, 0x92, 0x33, 0x7f, 0x00, 0x73, 0xa6, 0x11, 0xb2, 0x52, 0x8b, 0x03,
+  0x76, 0x46, 0x50, 0xf2, 0x54, 0xf7, 0x3c, 0x5e, 0x10, 0xb7, 0x4a, 0x0b,
+  0x61, 0x02, 0x21, 0x00, 0xfb, 0x94, 0x7f, 0x96, 0xc2, 0x1d, 0x4d, 0x81,
+  0x81, 0xa9, 0xcc, 0xa1, 0x34, 0x58, 0xf1, 0xd0, 0xba, 0x48, 0x85, 0xac,
+  0xa6, 0x04, 0xd2, 0xc8, 0x33, 0xe9, 0xee, 0xf9, 0x47, 0x8a, 0x45, 0x67,
+  0x02, 0x21, 0x00, 0xe3, 0xc4, 0x9c, 0x91, 0xf9, 0xe8, 0x87, 0x1c, 0xb8,
+  0x0c, 0x9b, 0x5a, 0xfe, 0xcc, 0x38, 0x11, 0x78, 0x6f, 0x7b, 0x79, 0xa2,
+  0x4b, 0xc8, 0xb9, 0x67, 0x86, 0x32, 0xb3, 0x8d, 0x23, 0xc8, 0xdb, 0x02,
+  0x20, 0x1f, 0x7c, 0x44, 0x43, 0x8f, 0xe3, 0xae, 0xf1, 0x88, 0x52, 0xc1,
+  0xe3, 0x62, 0xf3, 0xc6, 0xbf, 0xc2, 0xb0, 0x94, 0xda, 0x38, 0xa4, 0xdd,
+  0xe4, 0x64, 0x6a, 0xe0, 0x97, 0x9e, 0x16, 0x75, 0xfd, 0x02, 0x21, 0x00,
+  0xac, 0x46, 0xb0, 0x2e, 0x71, 0x9a, 0x01, 0x68, 0x25, 0x85, 0xd3, 0x94,
+  0x16, 0x19, 0x1d, 0x67, 0x89, 0x72, 0xb9, 0x30, 0x1d, 0x23, 0xb9, 0x25,
+  0x13, 0x3a, 0x9b, 0xea, 0xd7, 0x1c, 0x73, 0xf5, 0x02, 0x20, 0x7e, 0xcd,
+  0x6d, 0x33, 0x2c, 0x64, 0x2e, 0xfc, 0x15, 0xb3, 0x8e, 0x84, 0xeb, 0x57,
+  0x97, 0x8a, 0x50, 0x03, 0x03, 0xdc, 0x40, 0x2b, 0xbf, 0x0a, 0x02, 0x68,
+  0x6f, 0xde, 0xfd, 0x15, 0x8f, 0xac
+};
+
 // Helper function to avoid code duplication (saves 4k Flash)
 // arg can be in PROGMEM
 static void WebGetArg(const char* arg, char* out, size_t max)
 {
   String s = Webserver->arg((const __FlashStringHelper *)arg);
+  strlcpy(out, s.c_str(), max);
+//  out[max-1] = '\0';  // Ensure terminating NUL
+}
+
+static void WebGetArgSSL(const char* arg, char* out, size_t max)
+{
+  String s = WebserverSSL->arg((const __FlashStringHelper *)arg);
   strlcpy(out, s.c_str(), max);
 //  out[max-1] = '\0';  // Ensure terminating NUL
 }
@@ -473,6 +559,16 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
 #endif  // Not FIRMWARE_MINIMAL
 };
 
+const WebServerDispatch_t WebServerDispatchSSL[] PROGMEM = {
+  { "",   HTTP_ANY, HandleRootSSL },
+  #ifndef FIRMWARE_MINIMAL
+  { "rt", HTTP_ANY, HandleResetConfiguration },
+  { "in", HTTP_ANY, HandleInformationSSL },
+#endif  // Not FIRMWARE_MINIMAL
+  { "cs", HTTP_OPTIONS, HandlePreflightRequestSSL },
+  { "cm", HTTP_ANY, HandleHttpCommandSSL }
+};
+
 void WebServer_on(const char * prefix, void (*func)(void), uint8_t method = HTTP_ANY) {
 #ifdef ESP8266
   Webserver->on((const __FlashStringHelper *) prefix, (HTTPMethod) method, func);
@@ -480,6 +576,107 @@ void WebServer_on(const char * prefix, void (*func)(void), uint8_t method = HTTP
 #ifdef ESP32
   Webserver->on(prefix, (HTTPMethod) method, func);
 #endif  // ESP32
+}
+
+
+void setClock()
+{
+  configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+
+/*
+  Serial.print("Waiting for NTP time sync: ");
+  time_t now = time(nullptr);
+  while (now < 8 * 3600 * 2) {
+    delay(500);
+    Serial.print(".");
+    now = time(nullptr);
+  }
+  Serial.println("");
+  struct tm timeinfo;
+  gmtime_r(&now, &timeinfo);
+  Serial.print("Current time: ");
+  Serial.print(asctime(&timeinfo));
+  */
+}
+//MP
+void WebServer_onssl(const char * prefix, void (*func)(void), uint8_t method = HTTP_ANY) {
+#ifdef ESP8266
+  WebserverSSL->on((const __FlashStringHelper *) prefix, (HTTPMethod) method, func);
+#endif  // ESP8266
+#ifdef ESP32
+  WebserverSSL->on(prefix, (HTTPMethod) method, func);
+#endif  // ESP32
+}
+
+
+//MP
+void StartWebserverSSL(int type, IPAddress ipweb)
+{
+
+if (Settings.flag_https) {
+  if (!WebserverSSL) {
+
+//    configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+
+while (WiFi.status() != WL_CONNECTED) {
+  delay(500);
+  Serial.print(".");
+}
+
+
+  setClock(); // Required for X.509 validation
+
+if (Settings.web_portssl <= 400 || Settings.web_portssl >= 9000)
+   Settings.web_portssl = WEB_PORT_SSL;
+
+AddLog(LOG_LEVEL_INFO, PSTR("Port HTTPS: %d"), Settings.web_portssl);
+
+   WebserverSSL = new BearSSL::ESP8266WebServerSecure((HTTP_MANAGER == type || HTTP_MANAGER_RESET_ONLY == type) ? WEB_PORT_SSL : Settings.web_portssl);
+  //WebserverSSL->getServer().setRSACert(new BearSSL::X509List(server_cert), new BearSSL::PrivateKey(server_private_key));
+  WebserverSSL->getServer().setBufferSizes(2048,2048);
+  WebserverSSL->getServer().setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
+
+  //WebserverSSL->getServer().setRSACert(new BearSSL::X509List(serverCert), new BearSSL::PrivateKey(serverKey));
+  // WebserverSSL->setRSACert(serverCertList, serverPrivKey);
+
+
+   for (uint32_t i=0; i<ARRAY_SIZE(WebServerDispatchSSL); i++) {
+     const WebServerDispatch_t & line = WebServerDispatchSSL[i];
+     // copy uri in RAM and prefix with '/'
+     char uri[4];
+     uri[0] = '/';
+     uri[1] = pgm_read_byte(&line.uri[0]);
+     uri[2] = pgm_read_byte(&line.uri[1]);
+     uri[3] = '\0';
+     // register
+     WebServer_onssl(uri, line.handler, pgm_read_byte(&line.method));
+   }
+
+    /***questo funziona disdattivANDO TUUTTO**/
+//    WebserverSSL->on("/", handleRoot );
+
+  //   WebserverSSL->on("/sec1", [](){
+  //  WebserverSSL->send(200, "text/plain", "Hello world!");
+   //});
+
+   WebserverSSL->onNotFound(HandleNotFoundSSL);
+
+
+//WebserverSSL->on("/u2", HTTP_POST, HandleUploadDoneSSL, HandleUploadLoopSSL);  // this call requires 2 functions so we keep a direct call
+
+//WebserverSSL->getServer().begin(443);
+WebserverSSL->begin(Settings.web_portssl);
+
+} // end StartWebserverSSL
+
+//WebserverSSL->handleClient();
+ Web.reset_web_log_flag = false;
+
+  WiFiClientSecure incoming = WebserverSSL->getServer().available();
+
+ //BearSSL::ESP8266WebServerSecure incoming = WebserverSSL->getServer().available();
+
+  }
 }
 
 void StartWebserver(int type, IPAddress ipweb)
@@ -588,6 +785,15 @@ bool WebAuthenticate(void)
   }
 }
 
+bool WebAuthenticateSSL(void)
+{
+  if (strlen(SettingsText(SET_WEBPWD)) && (HTTP_MANAGER_RESET_ONLY != Web.state)) {
+    return WebserverSSL->authenticate(WEB_USERNAME, SettingsText(SET_WEBPWD));
+  } else {
+    return true;
+  }
+}
+
 bool HttpCheckPriviledgedAccess(bool autorequestauth = true)
 {
   if (HTTP_USER == Web.state) {
@@ -601,12 +807,33 @@ bool HttpCheckPriviledgedAccess(bool autorequestauth = true)
   return true;
 }
 
+bool HttpCheckPriviledgedAccessSSL(bool autorequestauth = true)
+{
+  if (HTTP_USER == Web.state) {
+    HandleRoot();
+    return false;
+  }
+  if (autorequestauth && !WebAuthenticateSSL()) {
+    WebserverSSL->requestAuthentication();
+    return false;
+  }
+  return true;
+}
+
 void HttpHeaderCors(void)
 {
   if (strlen(SettingsText(SET_CORS))) {
     Webserver->sendHeader(F("Access-Control-Allow-Origin"), SettingsText(SET_CORS));
   }
 }
+
+void HttpHeaderCorsSSL(void)
+{
+  if (strlen(SettingsText(SET_CORS))) {
+    WebserverSSL->sendHeader(F("Access-Control-Allow-Origin"), SettingsText(SET_CORS));
+  }
+}
+
 
 void WSHeaderSend(void)
 {
@@ -619,6 +846,18 @@ void WSHeaderSend(void)
   HttpHeaderCors();
 }
 
+void WSHeaderSendSSL(void)
+{
+  char server[32];
+  snprintf_P(server, sizeof(server), PSTR("Tasmota/%s (%s)"), TasmotaGlobal.version, GetDeviceHardware().c_str());
+  WebserverSSL->sendHeader(F("Server"), server);
+  WebserverSSL->sendHeader(F("Cache-Control"), F("no-cache, no-store, must-revalidate"));
+  WebserverSSL->sendHeader(F("Pragma"), F("no-cache"));
+  WebserverSSL->sendHeader(F("Expires"), F("-1"));
+  HttpHeaderCorsSSL();
+}
+
+
 /**********************************************************************************************
 * HTTP Content Page handler
 **********************************************************************************************/
@@ -627,6 +866,13 @@ void WSSend(int code, int ctype, const String& content)
 {
   char ct[25];  // strlen("application/octet-stream") +1 = Longest Content type string
   Webserver->send(code, GetTextIndexed(ct, sizeof(ct), ctype, kContentTypes), content);
+}
+
+//MP
+void WSSendSSL(int code, int ctype, const String& content)
+{
+  char ct[25];  // strlen("application/octet-stream") +1 = Longest Content type string
+  WebserverSSL->send(code, GetTextIndexed(ct, sizeof(ct), ctype, kContentTypes), content);
 }
 
 /**********************************************************************************************
@@ -642,6 +888,15 @@ void WSContentBegin(int code, int ctype)
   Web.chunk_buffer = "";
 }
 
+void WSContentBeginSSL(int code, int ctype)
+{
+  WebserverSSL->client().flush();
+  WSHeaderSendSSL();
+  WebserverSSL->setContentLength(CONTENT_LENGTH_UNKNOWN);
+  WSSendSSL(code, ctype, "");                        // Signal start of chunked content
+  Web.chunk_buffer = "";
+}
+
 void _WSContentSend(const String& content)        // Low level sendContent for all core versions
 {
   size_t len = content.length();
@@ -653,10 +908,29 @@ void _WSContentSend(const String& content)        // Low level sendContent for a
   DEBUG_CORE_LOG(PSTR("WEB: Chunk size %d/%d"), len, sizeof(TasmotaGlobal.mqtt_data));
 }
 
+void _WSContentSendSSL(const String& content)        // Low level sendContent for all core versions
+{
+  size_t len = content.length();
+  WebserverSSL->sendContent(content);
+
+#ifdef USE_DEBUG_DRIVER
+  ShowFreeMem(PSTR("WSContentSendSSL"));
+#endif
+  DEBUG_CORE_LOG(PSTR("WEB: Chunk size %d/%d"), len, sizeof(TasmotaGlobal.mqtt_data));
+}
+
 void WSContentFlush(void)
 {
   if (Web.chunk_buffer.length() > 0) {
     _WSContentSend(Web.chunk_buffer);                  // Flush chunk buffer
+    Web.chunk_buffer = "";
+  }
+}
+
+void WSContentFlushSSL(void)
+{
+  if (Web.chunk_buffer.length() > 0) {
+    _WSContentSendSSL(Web.chunk_buffer);                  // Flush chunk buffer
     Web.chunk_buffer = "";
   }
 }
@@ -684,6 +958,30 @@ void _WSContentSendBuffer(void)
   }
 }
 
+void _WSContentSendBufferSSL(void)
+{
+  int len = strlen(TasmotaGlobal.mqtt_data);
+
+  if (0 == len) {                                  // No content
+    return;
+  }
+  else if (len == sizeof(TasmotaGlobal.mqtt_data)) {
+    AddLog(LOG_LEVEL_INFO, PSTR("HTP: Content too large"));
+  }
+  else if (len < CHUNKED_BUFFER_SIZE) {            // Append chunk buffer with small content
+    Web.chunk_buffer += TasmotaGlobal.mqtt_data;
+    len = Web.chunk_buffer.length();
+  }
+
+  if (len >= CHUNKED_BUFFER_SIZE) {                // Either content or chunk buffer is oversize
+    WSContentFlushSSL();                              // Send chunk buffer before possible content oversize
+  }
+  if (strlen(TasmotaGlobal.mqtt_data) >= CHUNKED_BUFFER_SIZE) {  // Content is oversize
+    _WSContentSendSSL(TasmotaGlobal.mqtt_data);                     // Send content
+  }
+}
+
+
 void WSContentSend_P(const char* formatP, ...)     // Content send snprintf_P char data
 {
   // This uses char strings. Be aware of sending %% if % is needed
@@ -700,6 +998,24 @@ void WSContentSend_P(const char* formatP, ...)     // Content send snprintf_P ch
 #endif
 
   _WSContentSendBuffer();
+}
+
+void WSContentSend_PSSL(const char* formatP, ...)     // Content send snprintf_P char data
+{
+  // This uses char strings. Be aware of sending %% if % is needed
+  va_list arg;
+  va_start(arg, formatP);
+  int len = ext_vsnprintf_P(TasmotaGlobal.mqtt_data, sizeof(TasmotaGlobal.mqtt_data), formatP, arg);
+  va_end(arg);
+
+#ifdef DEBUG_TASMOTA_CORE
+  if (len > (sizeof(TasmotaGlobal.mqtt_data) -1)) {
+    TasmotaGlobal.mqtt_data[33] = '\0';
+    DEBUG_CORE_LOG(PSTR("ERROR: WSContentSend_PSSL size %d > mqtt_data size %d. Start of data [%s...]"), len, sizeof(TasmotaGlobal.mqtt_data), TasmotaGlobal.mqtt_data);
+  }
+#endif
+
+  _WSContentSendBufferSSL();
 }
 
 void WSContentSend_PD(const char* formatP, ...)    // Content send snprintf_P char data checked for decimal separator
@@ -728,6 +1044,33 @@ void WSContentSend_PD(const char* formatP, ...)    // Content send snprintf_P ch
   _WSContentSendBuffer();
 }
 
+void WSContentSend_PDSSL(const char* formatP, ...)    // Content send snprintf_P char data checked for decimal separator
+{
+  // This uses char strings. Be aware of sending %% if % is needed
+  va_list arg;
+  va_start(arg, formatP);
+  int len = ext_vsnprintf_P(TasmotaGlobal.mqtt_data, sizeof(TasmotaGlobal.mqtt_data), formatP, arg);
+  va_end(arg);
+
+#ifdef DEBUG_TASMOTA_CORE
+  if (len > (sizeof(TasmotaGlobal.mqtt_data) -1)) {
+    TasmotaGlobal.mqtt_data[33] = '\0';
+    DEBUG_CORE_LOG(PSTR("ERROR: WSContentSend_PDSSL size %d > mqtt_data size %d. Start of data [%s...]"), len, sizeof(TasmotaGlobal.mqtt_data), TasmotaGlobal.mqtt_data);
+  }
+#endif
+
+  if (D_DECIMAL_SEPARATOR[0] != '.') {
+    for (uint32_t i = 0; i < len; i++) {
+      if ('.' == TasmotaGlobal.mqtt_data[i]) {
+        TasmotaGlobal.mqtt_data[i] = D_DECIMAL_SEPARATOR[0];
+      }
+    }
+  }
+
+  _WSContentSendBufferSSL();
+}
+
+
 void WSContentStart_P(const char* title, bool auth)
 {
   if (auth && !WebAuthenticate()) {
@@ -741,10 +1084,30 @@ void WSContentStart_P(const char* title, bool auth)
   }
 }
 
+void WSContentStart_PSSL(const char* title, bool auth)
+{
+  if (auth && !WebAuthenticateSSL()) {
+    return WebserverSSL->requestAuthentication();
+  }
+
+  WSContentBeginSSL(200, CT_HTML);
+
+  if (title != nullptr) {
+    WSContentSend_PSSL(HTTP_HEADER1, PSTR(D_HTML_LANGUAGE), SettingsText(SET_DEVICENAME), title);
+  }
+}
+
+
 void WSContentStart_P(const char* title)
 {
   WSContentStart_P(title, true);
 }
+
+void WSContentStart_PSSL(const char* title)
+{
+  WSContentStart_PSSL(title, true);
+}
+
 
 void WSContentSendStyle_P(const char* formatP, ...)
 {
@@ -870,11 +1233,29 @@ void WSContentEnd(void)
   Webserver->client().stop();
 }
 
+void WSContentEndSSL(void)
+{
+  WSContentFlushSSL();                                // Flush chunk buffer
+  _WSContentSendSSL("");                              // Signal end of chunked content
+  WebserverSSL->client().stop();
+}
+
 void WSContentStop(void)
 {
   if ( WifiIsInManagerMode() && (!Web.initial_config) ) {
     if (WifiConfigCounter()) {
       WSContentSend_P(HTTP_COUNTER);
+    }
+  }
+  WSContentSend_P(HTTP_END, TasmotaGlobal.version);
+  WSContentEnd();
+}
+
+void WSContentStopSSL(void)
+{
+  if ( WifiIsInManagerMode() && (!Web.initial_config) ) {
+    if (WifiConfigCounter()) {
+      WSContentSend_PSSL(HTTP_COUNTER);
     }
   }
   WSContentSend_P(HTTP_END, TasmotaGlobal.version);
@@ -3007,6 +3388,32 @@ void HandleNotFound(void)
   }
 }
 
+//MP
+void HandleNotFoundSSL(void)
+{
+//  AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_HTTP "Not found (%s)"), Webserver->uri().c_str());
+
+  if (CaptivePortalSSL()) { return; }  // If captive portal redirect instead of displaying the error page.
+
+#ifdef USE_EMULATION
+#ifdef USE_EMULATION_HUE
+  String path = WebserverSSL->uri();
+  if ((EMUL_HUE == Settings.flag2.emulation) && (path.startsWith(F("/api")))) {
+    HandleHueApi(&path);
+  } else
+#endif  // USE_EMULATION_HUE
+#endif  // USE_EMULATION
+  {
+    WSContentBeginSSL(404, CT_PLAIN);
+    WSContentSend_PSSL(PSTR(D_FILE_NOT_FOUND "\n\nURI: %s\nMethod: %s\nArguments: %d\n"), Webserver->uri().c_str(), (Webserver->method() == HTTP_GET) ? PSTR("GET") : PSTR("POST"), Webserver->args());
+    for (uint32_t i = 0; i < Webserver->args(); i++) {
+      WSContentSend_PSSL(PSTR(" %s: %s\n"), Webserver->argName(i).c_str(), Webserver->arg(i).c_str());
+    }
+    WSContentEndSSL();
+  }
+}
+
+
 /* Redirect to captive portal if we got a request for another domain. Return true in that case so the page handler do not try to handle the request again. */
 bool CaptivePortal(void)
 {
@@ -3017,6 +3424,21 @@ bool CaptivePortal(void)
     Webserver->sendHeader(F("Location"), String(F("http://")) + Webserver->client().localIP().toString(), true);
     WSSend(302, CT_PLAIN, "");  // Empty content inhibits Content-length header so we have to close the socket ourselves.
     Webserver->client().stop();  // Stop is needed because we sent no content length
+    return true;
+  }
+  return false;
+}
+
+//MP
+bool CaptivePortalSSL(void)
+{
+  // Possible hostHeader: connectivitycheck.gstatic.com or 192.168.4.1
+  if ((WifiIsInManagerMode()) && !ValidIpAddress(WebserverSSL->hostHeader().c_str())) {
+    AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_HTTP D_REDIRECTED));
+
+    WebserverSSL->sendHeader(F("Location"), String(F("https://")) + WebserverSSL->client().localIP().toString(), true);
+    WSSendSSL(302, CT_PLAIN, "");  // Empty content inhibits Content-length header so we have to close the socket ourselves.
+    WebserverSSL->client().stop();  // Stop is needed because we sent no content length
     return true;
   }
   return false;
