@@ -199,6 +199,9 @@
 #define D_WARMLIGHT            "Calda"
 #define D_WEB_SERVER           "Server web"
 
+#define D_WEB_PORT "Porta Web"
+#define D_WEB_SSL "TaSMota S per HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION  "ATTENZIONE Questa versione non supporta il salvataggio delle impostazioni"
 #define D_LEVEL_10                 "livello 1-0"

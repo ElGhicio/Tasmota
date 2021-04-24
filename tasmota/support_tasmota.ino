@@ -1312,28 +1312,23 @@ void Every250mSeconds(void)
         if (!WifiIsInManagerMode()) {
           StartWebserver(Settings.webserver, WiFi.localIP());
 
-          //if (Settings.flag_https) {
-          if (1) {
-                StartWebserverSSL(Settings.webserver, WiFi.localIP());
+          if (Settings.flag_https) {
+            StartWebserverSSL(Settings.webserver, WiFi.localIP());
           }
-
-
         }
 #endif  // ESP8266
 #ifdef ESP32
 #ifdef USE_ETHERNET
         StartWebserver(Settings.webserver, (EthernetLocalIP()) ? EthernetLocalIP() : WiFi.localIP());
-        //if (Settings.flag_https) {
-         if (1) {
+        if (Settings.flag_https) {
           StartWebserverSSL(Settings.webserver, (EthernetLocalIP()) ? EthernetLocalIP() : WiFi.localIP());
         }
 
 #else
         StartWebserver(Settings.webserver, WiFi.localIP());
 
-        //if (Settings.flag_https) {
-        if (1) {
-              StartWebserverSSL(Settings.webserver, WiFi.localIP());
+        if (Settings.flag_https) {
+          StartWebserverSSL(Settings.webserver, WiFi.localIP());
         }
 #endif
 #endif  // ESP32

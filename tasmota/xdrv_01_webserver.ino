@@ -304,6 +304,10 @@ const char HTTP_FORM_LOG2[] PROGMEM =
   "<p><b>" D_SYSLOG_PORT "</b> (" STR(SYS_LOG_PORT) ")<br><input id='lp' placeholder='" STR(SYS_LOG_PORT) "' value='%d'></p>"
   "<p><b>" D_TELEMETRY_PERIOD "</b> (" STR(TELE_PERIOD) ")<br><input id='lt' placeholder='" STR(TELE_PERIOD) "' value='%d'></p>";
 
+  const char HTTP_WEB_PORTSSL[] PROGMEM =
+    "<label><b>" D_WEB_PORT "&nbsp;&nbsp;&nbsp;" D_WEB_SSL "</b><input id='ss' type='checkbox'%s></label><br><input id='pt' maxlength='4' placeholder='" STR(WEB_PORT_SSL) "' value='%s'><br>"
+    "<br>";
+
 const char HTTP_FORM_OTHER[] PROGMEM =
   "<fieldset><legend><b>&nbsp;" D_OTHER_PARAMETERS "&nbsp;</b></legend>"
   "<form method='get' action='co'>"
@@ -621,8 +625,7 @@ void WebServer_onssl(const char * prefix, void (*func)(void), uint8_t method = H
 void StartWebserverSSL(int type, IPAddress ipweb)
 {
 
-//if (Settings.flag_https) {
-if (1) {
+if (Settings.flag_https) {
   if (!WebserverSSL) {
 
 //    configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
@@ -3362,6 +3365,13 @@ void OtherSaveSettings(void) {
     WebGetArg(webindex, tmp1, sizeof(tmp1));  // Friendly name 1 to 8
     snprintf_P(command, sizeof(command), PSTR("%s;" D_CMND_FN"%d %s"), command, i +1, (!strlen(tmp1)) ? "\"" : tmp1);
   }
+
+  //MP
+  WebGetArg(PSTR("pt"), tmp1, sizeof(tmp1));
+  Settings.web_portssl=(!strlen(tmp1)) ? WEB_PORT_SSL : atoi(tmp1);
+  SettingsUpdateText(SET_WEB_PORTSSL, (!strlen(tmp1)) ? SettingsText(WEB_PORT_SSL) : tmp1);
+
+  Settings.flag_https = Webserver->hasArg(F("ss"));
 
 #ifdef USE_EMULATION
 #if defined(USE_EMULATION_WEMO) || defined(USE_EMULATION_HUE)
