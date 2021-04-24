@@ -717,6 +717,7 @@
 #define D_LOG_DOMOTICZ "DOM: "     // Domoticz
 #define D_LOG_DSB "DSB: "          // DS18xB20 sensor
 #define D_LOG_HTTP "HTP: "         // HTTP webserver
+#define D_LOG_HTTPS "HTPS: "       // HTTPS webserver
 #define D_LOG_HRE "HRE: "
 #define D_LOG_I2C "I2C: "          // I2C
 #define D_LOG_IRR "IRR: "          // Infra Red Received
