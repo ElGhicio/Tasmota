@@ -697,7 +697,7 @@ struct {
   uint16_t      web_portssl;               // F5F 3935
   uint8_t       flag_https;                // F61 3937
 
-  uint8_t       free_f5f[66];              // F61 - Decrement if adding new Setting variables just above and below
+  uint8_t       free_f5f[65];              // F61 - Decrement if adding new Setting variables just above and below
 
   // Only 32 bit boundary variables below
 
