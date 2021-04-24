@@ -2007,9 +2007,9 @@ Serial.println("in firware_minimal");
     //WSContentSpaceButtonSSL(BUTTON_FIRMWARE_UPGRADE);
     //WSContentButtonSSL(BUTTON_CONSOLE);
 #else
-    WSContentSpaceButtonSSL(BUTTON_CONFIGURATION);
-    //WSContentButtonSSL(BUTTON_INFORMATION);
-    //WSContentButtonSSL(BUTTON_FIRMWARE_UPGRADE);
+    //WSContentSpaceButtonSSL(BUTTON_CONFIGURATION);
+    WSContentSpaceButtonSSL(BUTTON_INFORMATION);
+  //  WSContentButtonSSL(BUTTON_FIRMWARE_UPGRADE);
   //  if (!WebUseManagementSubmenu()) {
 //      WSContentButtonSSL(BUTTON_CONSOLE);
   //  } else {
