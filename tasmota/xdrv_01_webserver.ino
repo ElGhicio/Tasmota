@@ -667,9 +667,9 @@ AddLog(LOG_LEVEL_INFO, PSTR("Port HTTPS: %d"), Settings.web_portssl);
     /***questo funziona disdattivANDO TUUTTO**/
 //    WebserverSSL->on("/", handleRoot );
 
-   WebserverSSL->on("/sec1", [](){
-    WebserverSSL->send(200, "text/plain", "Hello world!");
-   });
+  // WebserverSSL->on("/sec1", [](){
+  //  WebserverSSL->send(200, "text/plain", "Hello world!");
+  // });
 
    WebserverSSL->onNotFound(HandleNotFoundSSL);
 
@@ -686,9 +686,9 @@ WebserverSSL->begin(Settings.web_portssl);
  Web.reset_web_log_flag = false;
 
   WiFiClientSecure incoming = WebserverSSL->getServer().available();
-AddLog(LOG_LEVEL_INFO, PSTR("Port HTTPS: %d Passo2"), Settings.web_portssl);
+
  //BearSSL::ESP8266WebServerSecure incoming1 = WebserverSSL->getServer().available();
-AddLog(LOG_LEVEL_INFO, PSTR("Port HTTPS: %d Passo3"), Settings.web_portssl);
+
   }
 }
 
@@ -2003,19 +2003,20 @@ void HandleRootSSL(void)
 
   if (HTTP_ADMIN == Web.state) {
 #ifdef FIRMWARE_MINIMAL
-    WSContentSpaceButtonSSL(BUTTON_FIRMWARE_UPGRADE);
-    WSContentButtonSSL(BUTTON_CONSOLE);
+Serial.println("in firware_minimal");
+    //WSContentSpaceButtonSSL(BUTTON_FIRMWARE_UPGRADE);
+    //WSContentButtonSSL(BUTTON_CONSOLE);
 #else
     WSContentSpaceButtonSSL(BUTTON_CONFIGURATION);
-    WSContentButtonSSL(BUTTON_INFORMATION);
-    WSContentButtonSSL(BUTTON_FIRMWARE_UPGRADE);
-    if (!WebUseManagementSubmenu()) {
-      WSContentButtonSSL(BUTTON_CONSOLE);
-    } else {
-      WSContentButtonSSL(BUTTON_MANAGEMENT);
-    }
+    //WSContentButtonSSL(BUTTON_INFORMATION);
+    //WSContentButtonSSL(BUTTON_FIRMWARE_UPGRADE);
+  //  if (!WebUseManagementSubmenu()) {
+//      WSContentButtonSSL(BUTTON_CONSOLE);
+  //  } else {
+  //    WSContentButtonSSL(BUTTON_MANAGEMENT);
+//    }
 #endif  // Not FIRMWARE_MINIMAL
-    WSContentButtonSSL(BUTTON_RESTART);
+    WSContentSpaceButtonSSL(BUTTON_RESTART);
   }
   WSContentStopSSL();
 }
@@ -3306,6 +3307,10 @@ void HandleOtherConfiguration(void) {
   WSContentSend_P(HTTP_FORM_OTHER, stemp, (USER_MODULE == Settings.module) ? PSTR(" checked disabled") : "",
     (Settings.flag.mqtt_enabled) ? PSTR(" checked") : "",   // SetOption3 - Enable MQTT
     SettingsText(SET_FRIENDLYNAME1), SettingsText(SET_DEVICENAME));
+
+    //MP
+    WSContentSend_P(HTTP_WEB_PORTSSL,   (!Settings.flag_https) ?  "" : PSTR(" checked"),    // SetOption
+                    SettingsText(SET_WEB_PORTSSL));
 
   uint32_t maxfn = (TasmotaGlobal.devices_present > MAX_FRIENDLYNAMES) ? MAX_FRIENDLYNAMES : (!TasmotaGlobal.devices_present) ? 1 : TasmotaGlobal.devices_present;
 #ifdef USE_SONOFF_IFAN
