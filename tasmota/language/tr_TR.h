@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "Sıcak"
 #define D_WEB_SERVER "Web Sunucusu"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "UYARI Bu versiyon ayarların kalıcı olarak kaydedilmesine olanak sağlamıyor"
 #define D_LEVEL_10 "seviye 1-0"

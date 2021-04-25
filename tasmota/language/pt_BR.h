@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "Luz quente"
 #define D_WEB_SERVER "Servidor WEB"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "AVISO: esta versão não supporta configurações persistentes"
 #define D_LEVEL_10 "nível 1-0"

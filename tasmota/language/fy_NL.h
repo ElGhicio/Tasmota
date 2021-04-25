@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "Waarm"
 #define D_WEB_SERVER "Webserver"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "WARSKOGING Dizze ferzje bewarret gjin ynstellings"
 #define D_LEVEL_10 "peil 1-0"

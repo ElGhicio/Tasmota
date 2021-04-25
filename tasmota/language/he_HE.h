@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "חום"
 #define D_WEB_SERVER "Web שרת"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "אזהרה גרסה זו אינה תומכת בהגדרות קבועות"
 #define D_LEVEL_10 "level 1-0"

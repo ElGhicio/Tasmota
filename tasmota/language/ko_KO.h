@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "따뜻하게"
 #define D_WEB_SERVER "웹 서버"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "경고: 이 버전은 영구 설정을 지원하지 않습니다"
 #define D_LEVEL_10 "level 1-0"

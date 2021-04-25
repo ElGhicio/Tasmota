@@ -20,7 +20,7 @@
 /****
 Modified : El Ghicio
 Date     : 25/04/2021
-Support  : HTTPS create key 509 
+Support  : HTTPS create key 509
 ****/
 
 #ifdef USE_WEBSERVER
@@ -646,67 +646,61 @@ if (Settings.flag_https) {
 
 //    configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
 
-while (WiFi.status() != WL_CONNECTED) {
-  delay(500);
-  Serial.print(".");
-}
-
+    while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
 
   setClock(); // Required for X.509 validation
 
-if (Settings.web_portssl <= 400 || Settings.web_portssl >= 9000)
-   Settings.web_portssl = WEB_PORT_SSL;
+  if (Settings.web_portssl <= 400 || Settings.web_portssl >= 9000)
+    Settings.web_portssl = WEB_PORT_SSL;
 
-AddLog(LOG_LEVEL_INFO, PSTR("Port HTTPS: %d"), Settings.web_portssl);
+   AddLog(LOG_LEVEL_INFO, PSTR("Port HTTPS: %d"), Settings.web_portssl);
 
    WebserverSSL = new BearSSL::ESP8266WebServerSecure((HTTP_MANAGER == type || HTTP_MANAGER_RESET_ONLY == type) ? WEB_PORT_SSL : Settings.web_portssl);
-  //WebserverSSL->getServer().setRSACert(new BearSSL::X509List(server_cert), new BearSSL::PrivateKey(server_private_key));
-  WebserverSSL->getServer().setBufferSizes(2048,2048);
-  WebserverSSL->getServer().setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
+//WebserverSSL->getServer().setRSACert(new BearSSL::X509List(server_cert), new BearSSL::PrivateKey(server_private_key));
+   WebserverSSL->getServer().setBufferSizes(2048,2048);
+   WebserverSSL->getServer().setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
 
-  //WebserverSSL->getServer().setRSACert(new BearSSL::X509List(serverCert), new BearSSL::PrivateKey(serverKey));
-  // WebserverSSL->setRSACert(serverCertList, serverPrivKey);
+//WebserverSSL->getServer().setRSACert(new BearSSL::X509List(serverCert), new BearSSL::PrivateKey(serverKey));
+// WebserverSSL->setRSACert(serverCertList, serverPrivKey);
 
+    for (uint32_t i=0; i<ARRAY_SIZE(WebServerDispatchSSL); i++) {
+      const WebServerDispatch_t & line = WebServerDispatchSSL[i];
+      // copy uri in RAM and prefix with '/'
+      char uri[4];
+      uri[0] = '/';
+      uri[1] = pgm_read_byte(&line.uri[0]);
+      uri[2] = pgm_read_byte(&line.uri[1]);
+      uri[3] = '\0';
+   // register
+      WebServer_onssl(uri, line.handler, pgm_read_byte(&line.method));
+    }
 
-   for (uint32_t i=0; i<ARRAY_SIZE(WebServerDispatchSSL); i++) {
-     const WebServerDispatch_t & line = WebServerDispatchSSL[i];
-     // copy uri in RAM and prefix with '/'
-     char uri[4];
-     uri[0] = '/';
-     uri[1] = pgm_read_byte(&line.uri[0]);
-     uri[2] = pgm_read_byte(&line.uri[1]);
-     uri[3] = '\0';
-     // register
-     WebServer_onssl(uri, line.handler, pgm_read_byte(&line.method));
-   }
+// WebserverSSL->on("/sec1", [](){
+//  WebserverSSL->send(200, "text/plain", "Hello world!");
+// });
 
-    /***questo funziona disdattivANDO TUUTTO**/
-//    WebserverSSL->on("/", handleRoot );
+    WebserverSSL->onNotFound(HandleNotFoundSSL);
 
-  // WebserverSSL->on("/sec1", [](){
-  //  WebserverSSL->send(200, "text/plain", "Hello world!");
-  // });
-
-   WebserverSSL->onNotFound(HandleNotFoundSSL);
-
-   AddLog(LOG_LEVEL_INFO, PSTR("Port HTTPS: %d Passo1"), Settings.web_portssl);
+//   AddLog(LOG_LEVEL_INFO, PSTR("Port HTTPS: %d Passo1"), Settings.web_portssl);
 
 //WebserverSSL->on("/u2", HTTP_POST, HandleUploadDoneSSL, HandleUploadLoopSSL);  // this call requires 2 functions so we keep a direct call
 
 //WebserverSSL->getServer().begin(443);
-WebserverSSL->begin(Settings.web_portssl);
+    WebserverSSL->begin(Settings.web_portssl);
 
-} // end StartWebserverSSL
+   } // end StartWebserverSSL
 
 //WebserverSSL->handleClient();
- Web.reset_web_log_flag = false;
 
-  WiFiClientSecure incoming = WebserverSSL->getServer().available();
+   Web.reset_web_log_flag = false;
 
- //BearSSL::ESP8266WebServerSecure incoming1 = WebserverSSL->getServer().available();
+   WiFiClientSecure incoming = WebserverSSL->getServer().available();
 
-  }
-}
+ }
+} // end StartWebserverSSL
 
 void StartWebserver(int type, IPAddress ipweb)
 {

@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "暖"
 #define D_WEB_SERVER "Web Server"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "警告：精简固件不支持持久保存设置"
 #define D_LEVEL_10 "level 1-0"

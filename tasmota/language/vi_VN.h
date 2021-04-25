@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "Ấm"
 #define D_WEB_SERVER "Máy chủ Web"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "Cảnh báo phiên bản này không hỗ trợ các cài đặt vĩnh viễn"
 #define D_LEVEL_10 "level 1-0"

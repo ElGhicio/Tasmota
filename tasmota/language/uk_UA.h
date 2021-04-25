@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "Тепло"
 #define D_WEB_SERVER "Web сервер"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "ПОПЕРЕДЖЕННЯ! Ця версія не підтримує збереження налаштувань"
 #define D_LEVEL_10 "рівень 1-0"

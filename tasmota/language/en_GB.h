@@ -199,6 +199,9 @@
 #define D_WARMLIGHT "Warm"
 #define D_WEB_SERVER "Web Server"
 
+#define D_WEB_PORT "PortSSL"
+#define D_WEB_SSL "TaSMota S for HTTPS"
+
 // tasmota.ino
 #define D_WARNING_MINIMAL_VERSION "WARNING This version does not support persistent settings"
 #define D_LEVEL_10 "level 1-0"
