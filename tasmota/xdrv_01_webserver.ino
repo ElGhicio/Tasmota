@@ -536,8 +536,18 @@ void ExecuteWebCommand(char* svalue, uint32_t source) {
   ExecuteCommand(svalue, SRC_IGNORE);
 }
 
+void ExecuteWebCommandSSL(char* svalue, uint32_t source) {
+  ShowWebSourceSSL(source);
+  TasmotaGlobal.last_source = source;
+  ExecuteCommand(svalue, SRC_IGNORE);
+}
+
 void ExecuteWebCommand(char* svalue) {
   ExecuteWebCommand(svalue, SRC_WEBGUI);
+}
+
+void ExecuteWebCommandSSL(char* svalue) {
+  ExecuteWebCommandSSL(svalue, SRC_WEBGUI);
 }
 
 // replace the series of `Webserver->on()` with a table in PROGMEM
@@ -574,7 +584,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
 const WebServerDispatch_t WebServerDispatchSSL[] PROGMEM = {
   { "",   HTTP_ANY, HandleRootSSL },
   #ifndef FIRMWARE_MINIMAL
-  { "rt", HTTP_ANY, HandleResetConfiguration },
+  { "rt", HTTP_ANY, HandleResetConfigurationSSL },
   { "in", HTTP_ANY, HandleInformationSSL },
 #endif  // Not FIRMWARE_MINIMAL
   { "cs", HTTP_OPTIONS, HandlePreflightRequestSSL },
@@ -982,7 +992,7 @@ void _WSContentSendBufferSSL(void)
     return;
   }
   else if (len == sizeof(TasmotaGlobal.mqtt_data)) {
-    AddLog(LOG_LEVEL_INFO, PSTR("HTP: Content too large"));
+    AddLog(LOG_LEVEL_INFO, PSTR("HTPS: Content too large"));
   }
   else if (len < CHUNKED_BUFFER_SIZE) {            // Append chunk buffer with small content
     Web.chunk_buffer += TasmotaGlobal.mqtt_data;
@@ -996,7 +1006,6 @@ void _WSContentSendBufferSSL(void)
     _WSContentSendSSL(TasmotaGlobal.mqtt_data);                     // Send content
   }
 }
-
 
 void WSContentSend_P(const char* formatP, ...)     // Content send snprintf_P char data
 {
@@ -1299,7 +1308,7 @@ void WSContentButtonSSL(uint32_t title_index, bool show=true)
     WSContentSend_PSSL(PSTR("><button>%s</button></form></p>"),
       GetTextIndexed(title, sizeof(title), title_index, kButtonTitle));
   }
-}
+} // end WSContentButtonSSL
 
 void WSContentSpaceButton(uint32_t title_index, bool show=true)
 {
@@ -1312,7 +1321,6 @@ void WSContentSpaceButtonSSL(uint32_t title_index, bool show=true)
   WSContentSend_PSSL(PSTR("<div id=but%dd style=\"display: %s;\"></div>"),title_index, show ? "block":"none");            // 5px padding
   WSContentButtonSSL(title_index, show);
 }
-
 
 void WSContentSend_Temp(const char *types, float f_temperature) {
   WSContentSend_PD(HTTP_SNS_F_TEMP, types, Settings.flag2.temperature_resolution, &f_temperature, TempUnit());
@@ -1369,8 +1377,8 @@ void WSContentStopSSL(void)
       WSContentSend_PSSL(HTTP_COUNTER);
     }
   }
-  WSContentSend_P(HTTP_END, TasmotaGlobal.version);
-  WSContentEnd();
+  WSContentSend_PSSL(HTTP_END, TasmotaGlobal.version);
+  WSContentEndSSL();
 }
 
 /*********************************************************************************************/
@@ -2003,20 +2011,15 @@ void HandleRootSSL(void)
 
   if (HTTP_ADMIN == Web.state) {
 #ifdef FIRMWARE_MINIMAL
-Serial.println("in firware_minimal");
-    //WSContentSpaceButtonSSL(BUTTON_FIRMWARE_UPGRADE);
-    //WSContentButtonSSL(BUTTON_CONSOLE);
-#else
-    //WSContentSpaceButtonSSL(BUTTON_CONFIGURATION);
+
     WSContentSpaceButtonSSL(BUTTON_INFORMATION);
-  //  WSContentButtonSSL(BUTTON_FIRMWARE_UPGRADE);
-  //  if (!WebUseManagementSubmenu()) {
-//      WSContentButtonSSL(BUTTON_CONSOLE);
-  //  } else {
-  //    WSContentButtonSSL(BUTTON_MANAGEMENT);
-//    }
+
+#else
+
+    WSContentSpaceButtonSSL(BUTTON_INFORMATION);
+
 #endif  // Not FIRMWARE_MINIMAL
-    WSContentSpaceButtonSSL(BUTTON_RESTART);
+    WSContentButtonSSL(BUTTON_RESTART);
   }
   WSContentStopSSL();
 }
@@ -3454,6 +3457,24 @@ void HandleResetConfiguration(void)
   ExecuteWebCommand(command);
 }
 
+void HandleResetConfigurationSSL(void)
+{
+  if (!HttpCheckPriviledgedAccess(!WifiIsInManagerMode())) { return; }
+
+  AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_HTTPS D_RESET_CONFIGURATION));
+
+  WSContentStart_PSSL(PSTR(D_RESET_CONFIGURATION), !WifiIsInManagerMode());
+  WSContentSendStyleSSL();
+  WSContentSend_PSSL(PSTR("<div style='text-align:center;'>" D_CONFIGURATION_RESET "</div>"));
+  WSContentSend_PSSL(HTTP_MSG_RSTRT);
+  WSContentSpaceButtonSSL(BUTTON_MAIN);
+  WSContentStopSSL();
+
+  char command[CMDSZ];
+  snprintf_P(command, sizeof(command), PSTR(D_CMND_RESET " 1"));
+  ExecuteWebCommandSSL(command);
+}
+
 void HandleRestoreConfiguration(void)
 {
   if (!HttpCheckPriviledgedAccess()) { return; }
@@ -3622,6 +3643,148 @@ void HandleInformation(void)
 
 void HandleInformationSSL(void)
 {
+
+  if (!HttpCheckPriviledgedAccessSSL()) { return; }
+
+  float freemem = ((float)ESP_getFreeHeap()) / 1024;
+  AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_HTTPS D_INFORMATION));
+
+  char stopic[TOPSZ];
+
+  WSContentStart_PSSL(PSTR(D_INFORMATION));
+  // Save 1k of code space replacing table html with javascript replace codes
+  // }1 = </td></tr><tr><th>
+  // }2 = </th><td>
+  WSContentSend_PSSL(HTTP_SCRIPT_INFO_BEGIN);
+  WSContentSend_PSSL(PSTR("<table style='width:100%%'><tr><th>"));
+  WSContentSend_PSSL(PSTR(D_PROGRAM_VERSION "}2%s%s"), TasmotaGlobal.version, TasmotaGlobal.image_name);
+  WSContentSend_PSSL(PSTR("}1" D_BUILD_DATE_AND_TIME "}2%s"), GetBuildDateAndTime().c_str());
+  WSContentSend_PSSL(PSTR("}1" D_CORE_AND_SDK_VERSION "}2" ARDUINO_CORE_RELEASE "/%s"), ESP.getSdkVersion());
+  WSContentSend_PSSL(PSTR("}1" D_UPTIME "}2%s"), GetUptime().c_str());
+#ifdef ESP8266
+  WSContentSend_PSSL(PSTR("}1" D_FLASH_WRITE_COUNT "}2%d at 0x%X"), Settings.save_flag, GetSettingsAddress());
+#endif  // ESP8266
+#ifdef ESP32
+  WSContentSend_PSSL(PSTR("}1" D_FLASH_WRITE_COUNT "}2%d"), Settings.save_flag);
+#endif  // ESP32
+  WSContentSend_PSSL(PSTR("}1" D_BOOT_COUNT "}2%d"), Settings.bootcount);
+  WSContentSend_PSSL(PSTR("}1" D_RESTART_REASON "}2%s"), GetResetReason().c_str());
+  uint32_t maxfn = (TasmotaGlobal.devices_present > MAX_FRIENDLYNAMES) ? MAX_FRIENDLYNAMES : TasmotaGlobal.devices_present;
+#ifdef USE_SONOFF_IFAN
+  if (IsModuleIfan()) { maxfn = 1; }
+#endif  // USE_SONOFF_IFAN
+  for (uint32_t i = 0; i < maxfn; i++) {
+    WSContentSend_PSSL(PSTR("}1" D_FRIENDLY_NAME " %d}2%s"), i +1, SettingsText(SET_FRIENDLYNAME1 +i));
+  }
+  WSContentSend_PSSL(PSTR("}1}2&nbsp;"));  // Empty line
+#ifdef ESP32
+#ifdef USE_ETHERNET
+  if (static_cast<uint32_t>(EthernetLocalIP()) != 0) {
+    WSContentSend_PSSL(PSTR("}1" D_HOSTNAME "}2%s%s"), EthernetHostname(), (Mdns.begun) ? PSTR(".local") : "");
+    WSContentSend_PSSL(PSTR("}1" D_MAC_ADDRESS "}2%s"), EthernetMacAddress().c_str());
+    WSContentSend_PSSL(PSTR("}1" D_IP_ADDRESS " (eth)}2%_I"), (uint32_t)EthernetLocalIP());
+    WSContentSend_PSSL(PSTR("}1<hr/>}2<hr/>"));
+  }
+#endif
+#endif
+  if (Settings.flag4.network_wifi) {
+    int32_t rssi = WiFi.RSSI();
+    WSContentSend_PSSL(PSTR("}1" D_AP "%d " D_SSID " (" D_RSSI ")}2%s (%d%%, %d dBm)"), Settings.sta_active +1, HtmlEscape(SettingsText(SET_STASSID1 + Settings.sta_active)).c_str(), WifiGetRssiAsQuality(rssi), rssi);
+    WSContentSend_PSSL(PSTR("}1" D_HOSTNAME "}2%s%s"), TasmotaGlobal.hostname, (Mdns.begun) ? PSTR(".local") : "");
+#if LWIP_IPV6
+    String ipv6_addr = WifiGetIPv6();
+    if (ipv6_addr != "") {
+      WSContentSend_PSSL(PSTR("}1 IPv6 Address }2%s"), ipv6_addr.c_str());
+    }
+#endif
+    if (static_cast<uint32_t>(WiFi.localIP()) != 0) {
+      WSContentSend_PSSL(PSTR("}1" D_MAC_ADDRESS "}2%s"), WiFi.macAddress().c_str());
+      WSContentSend_PSSL(PSTR("}1" D_IP_ADDRESS " (wifi)}2%_I"), (uint32_t)WiFi.localIP());
+      WSContentSend_PSSL(PSTR("}1<hr/>}2<hr/>"));
+    }
+  }
+  if (!TasmotaGlobal.global_state.network_down) {
+    WSContentSend_PSSL(PSTR("}1" D_GATEWAY "}2%_I"), Settings.ipv4_address[1]);
+    WSContentSend_PSSL(PSTR("}1" D_SUBNET_MASK "}2%_I"), Settings.ipv4_address[2]);
+    WSContentSend_PSSL(PSTR("}1" D_DNS_SERVER "}2%_I"), Settings.ipv4_address[3]);
+  }
+  if ((WiFi.getMode() >= WIFI_AP) && (static_cast<uint32_t>(WiFi.softAPIP()) != 0)) {
+    WSContentSend_PSSL(PSTR("}1<hr/>}2<hr/>"));
+    WSContentSend_PSSL(PSTR("}1" D_MAC_ADDRESS "}2%s"), WiFi.softAPmacAddress().c_str());
+    WSContentSend_PSSL(PSTR("}1" D_IP_ADDRESS " (AP)}2%_I"), (uint32_t)WiFi.softAPIP());
+    WSContentSend_PSSL(PSTR("}1" D_GATEWAY "}2%_I"), (uint32_t)WiFi.softAPIP());
+  }
+  WSContentSend_PSSL(PSTR("}1}2&nbsp;"));  // Empty line
+  if (Settings.flag.mqtt_enabled) {  // SetOption3 - Enable MQTT
+    WSContentSend_PSSL(PSTR("}1" D_MQTT_HOST "}2%s"), SettingsText(SET_MQTT_HOST));
+    WSContentSend_PSSL(PSTR("}1" D_MQTT_PORT "}2%d"), Settings.mqtt_port);
+#ifdef USE_MQTT_TLS
+    WSContentSend_PSSL(PSTR("}1" D_MQTT_TLS_ENABLE "}2%s"), Settings.flag4.mqtt_tls ? PSTR(D_ENABLED) : PSTR(D_DISABLED));
+#endif  // USE_MQTT_TLS
+    WSContentSend_PSSL(PSTR("}1" D_MQTT_USER "}2%s"), SettingsText(SET_MQTT_USER));
+    WSContentSend_PSSL(PSTR("}1" D_MQTT_CLIENT "}2%s"), TasmotaGlobal.mqtt_client);
+    WSContentSend_PSSL(PSTR("}1" D_MQTT_TOPIC "}2%s"), SettingsText(SET_MQTT_TOPIC));
+    uint32_t real_index = SET_MQTT_GRP_TOPIC;
+    for (uint32_t i = 0; i < MAX_GROUP_TOPICS; i++) {
+      if (1 == i) { real_index = SET_MQTT_GRP_TOPIC2 -1; }
+      if (strlen(SettingsText(real_index +i))) {
+        WSContentSend_PSSL(PSTR("}1" D_MQTT_GROUP_TOPIC " %d}2%s"), 1 +i, GetGroupTopic_P(stopic, "", real_index +i));
+      }
+    }
+    WSContentSend_PSSL(PSTR("}1" D_MQTT_FULL_TOPIC "}2%s"), GetTopic_P(stopic, CMND, TasmotaGlobal.mqtt_topic, ""));
+    WSContentSend_PSSL(PSTR("}1" D_MQTT " " D_FALLBACK_TOPIC "}2%s"), GetFallbackTopic_P(stopic, ""));
+    WSContentSend_PSSL(PSTR("}1" D_MQTT_NO_RETAIN "}2%s"), Settings.flag4.mqtt_no_retain ? PSTR(D_ENABLED) : PSTR(D_DISABLED));
+  } else {
+    WSContentSend_PSSL(PSTR("}1" D_MQTT "}2" D_DISABLED));
+  }
+
+#if defined(USE_EMULATION) || defined(USE_DISCOVERY)
+  WSContentSend_PSSL(PSTR("}1}2&nbsp;"));  // Empty line
+#endif  // USE_EMULATION or USE_DISCOVERY
+#ifdef USE_EMULATION
+  WSContentSend_PSSL(PSTR("}1" D_EMULATION "}2%s"), GetTextIndexed(stopic, sizeof(stopic), Settings.flag2.emulation, kEmulationOptions));
+#endif  // USE_EMULATION
+#ifdef USE_DISCOVERY
+  WSContentSend_PSSL(PSTR("}1" D_MDNS_DISCOVERY "}2%s"), (Settings.flag3.mdns_enabled) ? D_ENABLED : D_DISABLED);  // SetOption55 - Control mDNS service
+  if (Settings.flag3.mdns_enabled) {  // SetOption55 - Control mDNS service
+#ifdef WEBSERVER_ADVERTISE
+    WSContentSend_PSSL(PSTR("}1" D_MDNS_ADVERTISE "}2" D_WEB_SERVER));
+#else
+    WSContentSend_PSSL(PSTR("}1" D_MDNS_ADVERTISE "}2" D_DISABLED));
+#endif  // WEBSERVER_ADVERTISE
+  }
+#endif  // USE_DISCOVERY
+
+  WSContentSend_PSSL(PSTR("}1}2&nbsp;"));  // Empty line
+  WSContentSend_PSSL(PSTR("}1" D_ESP_CHIP_ID "}2%d (%s)"), ESP_getChipId(), GetDeviceHardware().c_str());
+#ifdef ESP8266
+  WSContentSend_PSSL(PSTR("}1" D_FLASH_CHIP_ID "}20x%06X"), ESP.getFlashChipId());
+#endif
+  WSContentSend_PSSL(PSTR("}1" D_FLASH_CHIP_SIZE "}2%d kB"), ESP.getFlashChipRealSize() / 1024);
+  WSContentSend_PSSL(PSTR("}1" D_PROGRAM_FLASH_SIZE "}2%d kB"), ESP.getFlashChipSize() / 1024);
+  WSContentSend_PSSL(PSTR("}1" D_PROGRAM_SIZE "}2%d kB"), ESP_getSketchSize() / 1024);
+  WSContentSend_PSSL(PSTR("}1" D_FREE_PROGRAM_SPACE "}2%d kB"), ESP.getFreeSketchSpace() / 1024);
+#ifdef ESP32
+  int32_t freeMaxMem = 100 - (int32_t)(ESP_getMaxAllocHeap() * 100 / ESP_getFreeHeap());
+  WSContentSend_PDSSL(PSTR("}1" D_FREE_MEMORY "}2%1_f kB (" D_FRAGMENTATION " %d%%)"), &freemem, freeMaxMem);
+  if (psramFound()) {
+    WSContentSend_PSSL(PSTR("}1" D_PSR_MAX_MEMORY "}2%d kB"), ESP.getPsramSize() / 1024);
+    WSContentSend_PSSL(PSTR("}1" D_PSR_FREE_MEMORY "}2%d kB"), ESP.getFreePsram() / 1024);
+  }
+#else // ESP32
+  WSContentSend_PDSSL(PSTR("}1" D_FREE_MEMORY "}2%1_f kB"), &freemem);
+#endif // ESP32
+  WSContentSend_PSSL(PSTR("</td></tr></table>"));
+
+  WSContentSend_PSSL(HTTP_SCRIPT_INFO_END);
+  WSContentSendStyleSSL();
+  // WSContentSend_P(PSTR("<fieldset><legend><b>&nbsp;Information&nbsp;</b></legend>"));
+  WSContentSend_PSSL(PSTR("<style>td{padding:0px 5px;}</style>"
+                       "<div id='i' name='i'></div>"));
+  //   WSContentSend_P(PSTR("</fieldset>"));
+  WSContentSpaceButtonSSL(BUTTON_MAIN);
+  WSContentStopSSL();
+
 }
 
 #endif  // Not FIRMWARE_MINIMAL
