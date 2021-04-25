@@ -34,6 +34,9 @@ Support of Core versions before 2.7.1 has been removed.
 
 In addition to TLS using fingerprints now also user supplied CA certs and AWS IoT is supported. Read [full documentation](https://tasmota.github.io/docs/AWS-IoT)
 
+## Support WebServer SSL
+In this version 9.4.1 support https with certificate x509 
+
 ## Initial configuration tools
 
 For initial configuration this release supports Webserver based **WifiManager** or **Serial** based command interface only. Support for **WPS** and **SmartConfig** has been removed.
