@@ -636,7 +636,6 @@ void WebServer_onssl(const char * prefix, void (*func)(void), uint8_t method = H
 #endif  // ESP32
 }
 
-
 //MP
 void StartWebserverSSL(int type, IPAddress ipweb)
 {
