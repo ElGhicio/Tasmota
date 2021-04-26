@@ -199,6 +199,7 @@
 #define D_WARMLIGHT            "Calda"
 #define D_WEB_SERVER           "Server web"
 
+//WEBSSL
 #define D_WEB_PORT "Porta Web"
 #define D_WEB_SSL "TaSMota S per HTTPS"
 

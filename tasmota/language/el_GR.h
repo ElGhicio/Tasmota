@@ -199,6 +199,7 @@
 #define D_WARMLIGHT "Θερμό"
 #define D_WEB_SERVER "Διακομιστής Web"
 
+//WEBSSL
 #define D_WEB_PORT "PortSSL"
 #define D_WEB_SSL "TaSMota S for HTTPS"
 

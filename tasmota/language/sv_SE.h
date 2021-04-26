@@ -199,6 +199,7 @@
 #define D_WARMLIGHT "Varm"
 #define D_WEB_SERVER "Webbserver"
 
+//WEBSSL
 #define D_WEB_PORT "PortSSL"
 #define D_WEB_SSL "TaSMota S for HTTPS"
 

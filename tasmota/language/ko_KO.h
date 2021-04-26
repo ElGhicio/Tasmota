@@ -199,6 +199,7 @@
 #define D_WARMLIGHT "따뜻하게"
 #define D_WEB_SERVER "웹 서버"
 
+//WEBSSL
 #define D_WEB_PORT "PortSSL"
 #define D_WEB_SSL "TaSMota S for HTTPS"
 
