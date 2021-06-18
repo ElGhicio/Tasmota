@@ -662,9 +662,6 @@ if (Settings.flag_https) {
    WebserverSSL->getServer().setBufferSizes(2048,2048);
    WebserverSSL->getServer().setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
 
-//WebserverSSL->getServer().setRSACert(new BearSSL::X509List(serverCert), new BearSSL::PrivateKey(serverKey));
-// WebserverSSL->setRSACert(serverCertList, serverPrivKey);
-
     for (uint32_t i=0; i<ARRAY_SIZE(WebServerDispatchSSL); i++) {
       const WebServerDispatch_t & line = WebServerDispatchSSL[i];
       // copy uri in RAM and prefix with '/'
