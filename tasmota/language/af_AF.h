@@ -31,6 +31,7 @@
  * Updated until v9.3.1.1
 \*********************************************************************/
 
+
 //#define LANGUAGE_MODULE_NAME         // Enable to display "Module Generic" (ie Spanish), Disable to display "Generic Module" (ie English)
 // https://www.science.co.il/language/Locale-codes.php
 #define LANGUAGE_LCID 1078
